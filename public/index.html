@@ -740,7 +740,7 @@ let recog=null, isRec=false, vText='', impOpen=false;
 
   // Check if already logged in
   try {
-    const r=await fetch('/api/auth/me');
+    const r=await fetch('/api/auth/me',{credentials:'include'});
     if(r.ok){
       const d=await r.json();
       user=d.user; theme=user.theme||''; energy=user.energy||'';
@@ -772,14 +772,13 @@ async function doLogin(){
   const err=document.getElementById('login-err');
   err.textContent=''; btn.disabled=true; btn.textContent='Signing in…';
   try {
-    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const r=await fetch('/api/auth/login',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
     const d=await r.json();
-    if(!r.ok){err.textContent=d.error||'Login failed';return;}
+    if(!r.ok){err.textContent=d.error||'Login failed';btn.disabled=false;btn.textContent='Sign In →';return;}
     user=d.user; theme=user.theme||''; energy=user.energy||'';
     hideAuth();
     if(theme) bootApp(); else showThemePicker();
-  } catch(e){err.textContent='Network error';}
-  btn.disabled=false; btn.textContent='Sign In →';
+  } catch(e){err.textContent='Network error — please try again';btn.disabled=false;btn.textContent='Sign In →';}
 }
 
 async function doRegister(){
@@ -788,21 +787,28 @@ async function doRegister(){
   const pass=document.getElementById('reg-pass').value;
   const btn=document.getElementById('reg-btn');
   const err=document.getElementById('reg-err');
+  if(!email||!pass){err.textContent='Email and password are required';return;}
   err.textContent=''; btn.disabled=true; btn.textContent='Creating account…';
   try {
-    const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password:pass})});
+    const r=await fetch('/api/auth/register',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password:pass})});
     const d=await r.json();
-    if(!r.ok){err.textContent=d.error||'Registration failed';return;}
+    if(!r.ok){err.textContent=d.error||'Registration failed';btn.disabled=false;btn.textContent='Create Account →';return;}
     user=d.user; theme=''; energy='';
-    hideAuth(); showThemePicker();
-  } catch(e){err.textContent='Network error';}
-  btn.disabled=false; btn.textContent='Create Account →';
+    hideAuth();
+    showThemePicker();
+  } catch(e){err.textContent='Network error — please try again';btn.disabled=false;btn.textContent='Create Account →';}
 }
 
 async function pickTheme(t){
   theme=t;
+  try {
+    const r=await fetch('/api/auth/preferences',{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({theme:t})});
+    if(!r.ok) throw new Error('Failed to save theme');
+  } catch(e){
+    console.error('Theme save error:',e);
+    // Still boot the app — theme will just reset on refresh if save failed
+  }
   hideThemePicker();
-  await api('PATCH','/api/auth/preferences',{theme:t});
   bootApp();
 }
 
@@ -844,7 +850,7 @@ async function bootApp(){
 
 // ══ API HELPERS ═══════════════════════════════════════════════════════════════
 async function api(method, url, body){
-  const opts={method,headers:{'Content-Type':'application/json'}};
+  const opts={method,credentials:'include',headers:{'Content-Type':'application/json'}};
   if(body) opts.body=JSON.stringify(body);
   const r=await fetch(url,opts);
   if(r.status===401){doLogout();throw new Error('Session expired');}
