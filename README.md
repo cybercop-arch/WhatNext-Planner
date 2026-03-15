@@ -271,7 +271,6 @@ whatnext-planner/
 
 <div align="center">
 
-Made with [Claude](https://anthropic.com) · MIT License
 
 *Not a productivity app — a clarity tool.*
 
