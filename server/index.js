@@ -9,15 +9,20 @@ const apiRouter = require('./routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProd = process.env.NODE_ENV === 'production';
+
+// ── Trust Railway's proxy (required for secure cookies on Railway) ──────────
+app.set('trust proxy', 1);
 
 // ── Middleware ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// CORS (dev only — in prod, same origin)
-if (process.env.NODE_ENV === 'development') {
-  app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
-}
+// CORS
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
 // Session
 app.use(session({
@@ -25,9 +30,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProd,       // HTTPS only in production
     httpOnly: true,
-    maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days
+    sameSite: isProd ? 'none' : 'lax',  // 'none' needed for cross-origin on Railway
+    maxAge: 30 * 24 * 60 * 60 * 1000   // 30 days
   }
 }));
 
